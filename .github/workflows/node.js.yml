@@ -1,36 +1,21 @@
-name: Build and Tests
+name: K6 Performance Testing
 
 on:
   push:
-    branches: [ master ]
+    branches: [ "master" ]
   pull_request:
-    branches: [ master ]
-  schedule:   
-    - cron: '0 12 * * *'
+    branches: [ "master" ]
 
 jobs:
-  build:
-    name: Run Unit Tests
+  run-test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Use Node.js 22
-      uses: actions/setup-node@v4
-      with:
-        node-version: 22
-        cache: 'npm'
-    - run: npm install      
-    - run: npm run coverage
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
 
-  sonarcloud:
-    name: Run SonarCloud
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+      - name: Setup K6
+        uses: grafana/setup-k6-action@v1.1.0
+      - name: Run local k6 test
+        uses: grafana/run-k6-action@v1.1.3
         with:
-          fetch-depth: 0
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          path: src/tests
