@@ -4,21 +4,25 @@ import http from 'k6/http';
 import { check } from 'k6';
 import { Trend, Rate } from 'k6/metrics';
 
-export const getContactsDuration = new Trend('get_contacts', true);
-export const RateContentOK = new Rate('content_OK');
+// Métricas customizadas
+export const getBooksDuration = new Trend('get_books_duration', true);
+export const successRate = new Rate('success_rate');
 
+// Configurações de execução
 export const options = {
   thresholds: {
-    http_req_failed: ['rate<0.30'],
-    get_contacts: ['p(99)<500'],
-    content_OK: ['rate>0.95']
+    http_req_failed: ['rate<0.12'], // < 12% de falhas
+    get_books_duration: ['p(95)<5700'], // 95% das respostas < 5700ms
+    success_rate: ['rate>0.95'] // Taxa de sucesso > 95%
   },
   stages: [
-    { duration: '10s', target: 5 },
-    { duration: '20s', target: 15 }
+    { duration: '1m', target: 10 }, // início com 10 VUs
+    { duration: '2m', target: 150 }, // aumento gradual
+    { duration: '2m', target: 300 } // atinge pico de 300 VUs
   ]
 };
 
+// Geração de relatórios
 export function handleSummary(data) {
   return {
     './src/output/index.html': htmlReport(data),
@@ -26,24 +30,14 @@ export function handleSummary(data) {
   };
 }
 
+// Função principal
 export default function () {
-  const baseUrl = 'https://test.k6.io/';
+  const res = http.get('https://fakerestapi.azurewebsites.net/api/v1/Books');
 
-  const params = {
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  };
-
-  const OK = 200;
-
-  const res = http.get(`${baseUrl}`, params);
-
-  getContactsDuration.add(res.timings.duration);
-
-  RateContentOK.add(res.status === OK);
+  getBooksDuration.add(res.timings.duration);
+  successRate.add(res.status === 200);
 
   check(res, {
-    'GET Contacts - Status 200': () => res.status === OK
+    'GET /Books - status 200': () => res.status === 200
   });
 }
